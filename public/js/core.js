@@ -156,61 +156,106 @@ async function render() {
   if (r?.public) { ME = null; return r.fn(null, path.match(r.re), query); }
   if (!ME) { try { ME = await api('GET', 'me'); } catch { return go('#/login'); } }
   if (!$('#app')) shell();
-  $$('nav.side a').forEach(a => a.classList.toggle('on', path === a.getAttribute('href').slice(1) || (a.getAttribute('href') !== '#/' && path.startsWith(a.getAttribute('href').slice(1)))));
-  $('nav.side').classList.remove('open');
+  $$('nav.side .navlist a').forEach(a => a.classList.toggle('on', path === a.getAttribute('href').slice(1) || (a.getAttribute('href') !== '#/' && path.startsWith(a.getAttribute('href').slice(1)))));
+  $('nav.side').classList.remove('open'); $('#scrim')?.classList.remove('on');
   const gs = $('#gs'); if (gs && document.activeElement !== gs) { gs.value = ''; $('#gsr')?.classList.add('hide'); }
   const main = $('#m'); main.innerHTML = '<p class="muted">Loading…</p>';
   if (!r) { main.innerHTML = '<div class="empty">Page not found.</div>'; return; }
   try { await r.fn(main, path.match(r.re), query); } catch (e) { if (e.status === 402) main.innerHTML = upgradeCard(e.message); else main.innerHTML = `<div class="card"><p class="err">${esc(e.message)}</p></div>`; }
-  main.focus?.();
+  main.focus?.({ preventScroll: true }); window.scrollTo(0, 0);
 }
 const upgradeCard = msg => `<div class="card" style="max-width:520px"><h3>Upgrade to Pro</h3><p class="muted">${esc(msg)}</p><a class="btn" href="#/settings/billing">See plans</a></div>`;
 async function refreshMe() { ME = await api('GET', 'me'); shell(); }
 
+// ---------------- icons (stroke icons, 24px grid)
+const ICONS = {
+  dashboard: '<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>',
+  pipeline: '<rect x="3" y="3" width="18" height="18" rx="2.5"/><path d="M8 7v7M12 7v4M16 7v9"/>',
+  deals: '<rect x="2" y="7" width="20" height="14" rx="2.5"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>',
+  contacts: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
+  companies: '<rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01"/>',
+  tasks: '<path d="m9 11 3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',
+  mail: '<rect x="2" y="4" width="20" height="16" rx="2.5"/><path d="m22 7-10 6L2 7"/>',
+  target: '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
+  calendar: '<rect x="3" y="4" width="18" height="18" rx="2.5"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+  quote: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/>',
+  forecast: '<path d="m22 7-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/>',
+  reports: '<path d="M3 3v18h18"/><path d="M18 17V9M13 17V5M8 17v-3"/>',
+  zap: '<path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/>',
+  settings: '<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>',
+  shield: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
+  search: '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
+  bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
+  phone: '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/>',
+  note: '<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>',
+  arrow: '<path d="M5 12h14M12 5l7 7-7 7"/>',
+  inbox: '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
+  send: '<path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/>',
+  sparkles: '<path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z"/>',
+  dollar: '<path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>',
+  trophy: '<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M4 22h16M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22M18 2H6v7a6 6 0 0 0 12 0V2z"/>',
+  percent: '<path d="M19 5 5 19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/>',
+  userplus: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/>',
+  layers: '<path d="m12 2 10 5-10 5L2 7z"/><path d="m2 17 10 5 10-5M2 12l10 5 10-5"/>',
+  logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>',
+  moon: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/>',
+  user: '<circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/>',
+  lock: '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+  chevron: '<path d="m6 9 6 6 6-6"/>',
+};
+const icon = (n, size = 18, cls = '') => `<svg class="i ${cls}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n] || ''}</svg>`;
+
 // ---------------- shell
 const NAV = [
-  ['', [['#/', '📊', 'Dashboard'], ['#/pipeline', '🧲', 'Pipeline'], ['#/deals', '💼', 'Deals'], ['#/contacts', '👤', 'Contacts'], ['#/companies', '🏢', 'Companies'], ['#/tasks', '✅', 'Tasks']]],
-  ['Engage', [['#/email', '✉️', 'Email'], ['#/leads', '🎯', 'Lead capture'], ['#/meetings', '📅', 'Meetings'], ['#/quotes', '🧾', 'Quotes']]],
-  ['Insights', [['#/forecast', '📈', 'Forecast'], ['#/reports', '📋', 'Reports']]],
-  ['Workspace', [['#/automations', '⚡', 'Automations'], ['#/settings', '⚙️', 'Settings']]],
+  ['', [['#/', 'dashboard', 'Dashboard'], ['#/pipeline', 'pipeline', 'Pipeline'], ['#/deals', 'deals', 'Deals'], ['#/contacts', 'contacts', 'Contacts'], ['#/companies', 'companies', 'Companies'], ['#/tasks', 'tasks', 'Tasks']]],
+  ['Engage', [['#/email', 'mail', 'Email'], ['#/leads', 'target', 'Lead capture'], ['#/meetings', 'calendar', 'Meetings'], ['#/quotes', 'quote', 'Quotes']]],
+  ['Insights', [['#/forecast', 'forecast', 'Forecast'], ['#/reports', 'reports', 'Reports']]],
+  ['Workspace', [['#/automations', 'zap', 'Automations'], ['#/settings', 'settings', 'Settings']]],
 ];
 function shell() {
   const trial = ME.plan.trial_days_left, free = ME.plan.plan === 'free';
-  $('#root').innerHTML = `<div id="app"><nav class="side" aria-label="Main"><div class="brand"><img src="icon.svg" width="24" height="24" alt="">PipelineHQ</div>
-    ${NAV.map(([sec, items]) => `${sec ? `<div class="sec">${sec}</div>` : ''}${items.map(([h, i, l]) => `<a href="${h}"><span class="ico">${i}</span>${l}</a>`).join('')}`).join('')}
-    ${ME.superadmin || ME.impersonating ? '<div class="sec">Platform</div><a href="#/admin"><span class="ico">🛡️</span>Admin</a>' : ''}
-    <div style="margin-top:auto;padding:12px 10px 0;font-size:12px" class="muted">${esc(ME.org.name)} · <span class="tag">${esc(ME.plan.label)}</span></div></nav>
+  $('#root').innerHTML = `<div id="app"><nav class="side" aria-label="Main">
+    <div class="ws"><span class="logo">${esc(fmt.initials(ME.org.name).slice(0, 1))}</span><span class="grow"><b>${esc(ME.org.name)}</b><small>${esc(ME.plan.label)} plan${trial ? ` · trial` : ''}</small></span></div>
+    <div class="navlist">${NAV.map(([sec, items]) => `${sec ? `<div class="sec">${sec}</div>` : ''}${items.map(([h, i, l]) => `<a href="${h}">${icon(i)}<span>${l}</span></a>`).join('')}`).join('')}
+    ${ME.superadmin || ME.impersonating ? `<div class="sec">Platform</div><a href="#/admin">${icon('shield')}<span>Admin</span></a>` : ''}</div>
+    ${trial && ME.user.role === 'owner' ? `<a class="upsell" href="#/settings/billing"><b>${icon('sparkles', 15)} ${trial} day${trial === 1 ? '' : 's'} left in trial</b><span>Choose a plan to keep Pro features</span></a>`
+      : free && ME.user.role === 'owner' ? `<a class="upsell" href="#/settings/billing"><b>${icon('sparkles', 15)} Upgrade to Pro</b><span>Automations, sequences, AI & more</span></a>` : ''}
+    <button class="me" id="um" aria-label="Account menu"><span class="av lg">${esc(fmt.initials(ME.user.name))}</span><span class="grow"><b>${esc(ME.user.name)}</b><small>${esc(ME.user.email)}</small></span>${icon('chevron', 16)}</button>
+  </nav><div class="scrim" id="scrim"></div>
   <div class="main">
-    ${ME.impersonating ? `<div class="banner warn">🛡️ Viewing as ${esc(ME.user.name)} (${esc(ME.user.email)}) <button class="btn sm" id="stopImp">Stop impersonating</button></div>` : ''}
-    ${trial ? `<div class="banner info">Pro trial — ${trial} day${trial === 1 ? '' : 's'} left. ${ME.user.role === 'owner' ? '<a href="#/settings/billing">Choose a plan</a>' : ''}</div>` : free ? `<div class="banner info">You're on the Free plan. ${ME.user.role === 'owner' ? '<a href="#/settings/billing">Upgrade to Pro</a> for automation, sequences, AI, forecasting and more.' : ''}</div>` : ''}
-    <header class="top"><button class="iconbtn" id="burger" aria-label="Menu">☰</button>
-      <div class="search"><input type="search" id="gs" placeholder="Search contacts, companies, deals…  ( / )" autocomplete="off" aria-label="Search"><div class="res hide" id="gsr"></div></div>
+    ${ME.impersonating ? `<div class="banner warn">${icon('shield', 16)} Viewing as ${esc(ME.user.name)} (${esc(ME.user.email)}) <button class="btn sm" id="stopImp">Stop impersonating</button></div>` : ''}
+    <header class="top"><button class="iconbtn" id="burger" aria-label="Menu">${icon('menu')}</button>
+      <div class="search">${icon('search', 16, 'si')}<input type="search" id="gs" placeholder="Search contacts, companies, deals…" autocomplete="off" aria-label="Search"><kbd>/</kbd><div class="res hide" id="gsr"></div></div>
       <span class="grow"></span>
-      <div style="position:relative"><button class="btn" id="quick" aria-label="Create new">＋<span class="lbl"> New</span></button></div>
-      <div style="position:relative"><button class="iconbtn" id="bell" aria-label="Notifications">🔔${ME.unread ? `<span class="badge">${ME.unread > 99 ? '99+' : ME.unread}</span>` : ''}</button></div>
-      <div style="position:relative"><button class="iconbtn" id="um" aria-label="Account"><span class="av">${esc(fmt.initials(ME.user.name))}</span></button></div>
+      <div class="rel"><button class="iconbtn" id="bell" aria-label="Notifications">${icon('bell')}${ME.unread ? `<span class="badge">${ME.unread > 99 ? '99+' : ME.unread}</span>` : ''}</button></div>
+      <div class="rel"><button class="btn" id="quick" aria-label="Create new">${icon('plus', 16)}<span class="lbl">New</span></button></div>
     </header><main id="m" tabindex="-1"></main></div></div>`;
-  $('#burger').onclick = () => $('nav.side').classList.toggle('open');
+  const toggleNav = open => { $('nav.side').classList.toggle('open', open); $('#scrim').classList.toggle('on', open); };
+  $('#burger').onclick = () => toggleNav(!$('nav.side').classList.contains('open'));
+  $('#scrim').onclick = () => toggleNav(false);
   $('#stopImp')?.addEventListener('click', async () => { await api('POST', 'sa/stop'); ME = null; $('#root').innerHTML = ''; go('#/admin'); });
   setupSearch();
   $('#bell').onclick = e => dropdown(e.currentTarget, async d => {
     const list = await api('GET', 'notifications');
-    d.innerHTML = `<div class="row" style="padding:10px 12px;border-bottom:1px solid var(--bd)"><b class="grow">Notifications</b><button class="btn link small" data-all>Mark all read</button></div>
-      ${list.map(n => `<a class="it ${n.read ? '' : 'unread'}" href="${esc(n.link || '#/')}" data-id="${n.id}">${esc(n.text)}<div class="small muted">${fmt.rel(n.created_at)}</div></a>`).join('') || '<div class="empty">You are all caught up.</div>'}`;
+    d.innerHTML = `<div class="dh"><b class="grow">Notifications</b><button class="btn link small" data-all>Mark all read</button></div>
+      ${list.map(n => `<a class="it ${n.read ? '' : 'unread'}" href="${esc(n.link || '#/')}" data-id="${n.id}"><span class="dot"></span><span>${esc(n.text)}<small>${fmt.rel(n.created_at)}</small></span></a>`).join('') || '<div class="empty">You\'re all caught up.</div>'}`;
     $('[data-all]', d).onclick = async () => { await api('POST', 'notifications/read', {}); ME.unread = 0; $('#bell .badge')?.remove(); d.remove(); };
     $$('.it', d).forEach(a => a.onclick = () => { api('POST', 'notifications/read', { ids: [a.dataset.id] }); });
   });
   $('#um').onclick = e => dropdown(e.currentTarget, d => {
-    d.style.width = '240px';
-    d.innerHTML = `<div class="it"><b>${esc(ME.user.name)}</b><div class="small muted">${esc(ME.user.email)} · ${esc(ME.user.role)}</div></div>
-      <a class="it" href="#/settings/profile">Profile & email</a><a class="it" href="#/settings/security">Security</a>
-      <a class="it" href="#" data-theme>Theme: ${{ light: 'Light', dark: 'Dark' }[document.documentElement.dataset.theme] || 'System'}</a><a class="it" href="#" data-out>Sign out</a>`;
+    d.classList.add('up');
+    d.innerHTML = `<div class="dh"><span><b>${esc(ME.user.name)}</b><small>${esc(ME.user.email)} · ${esc(ME.user.role)}</small></span></div>
+      <a class="it" href="#/settings/profile">${icon('user', 16)}<span>Profile & email</span></a><a class="it" href="#/settings/security">${icon('lock', 16)}<span>Security</span></a>
+      <a class="it" href="#" data-theme>${icon('moon', 16)}<span>Theme: ${{ light: 'Light', dark: 'Dark' }[document.documentElement.dataset.theme] || 'System'}</span></a><a class="it" href="#" data-out>${icon('logout', 16)}<span>Sign out</span></a>`;
     $('[data-out]', d).onclick = async ev => { ev.preventDefault(); await api('POST', 'logout'); ME = null; $('#root').innerHTML = ''; go('#/login'); };
     $('[data-theme]', d).onclick = ev => { ev.preventDefault(); const cur = document.documentElement.dataset.theme; const next = !cur ? 'dark' : cur === 'dark' ? 'light' : ''; setTheme(next); d.remove(); };
   });
   $('#quick').onclick = e => dropdown(e.currentTarget, d => {
-    d.style.width = '200px';
-    d.innerHTML = [['deal', '💼 Deal'], ['contact', '👤 Contact'], ['company', '🏢 Company'], ['task', '✅ Task']].map(([k, l]) => `<a class="it" href="#" data-k="${k}">${l}</a>`).join('');
+    d.classList.add('narrow');
+    d.innerHTML = `<div class="dh"><b>Create</b></div>` + [['deal', 'deals', 'Deal'], ['contact', 'contacts', 'Contact'], ['company', 'companies', 'Company'], ['task', 'tasks', 'Task']].map(([k, i, l]) => `<a class="it" href="#" data-k="${k}">${icon(i, 16)}<span>${l}</span></a>`).join('');
     $$('[data-k]', d).forEach(a => a.onclick = ev => { ev.preventDefault(); d.remove(); Forms[a.dataset.k]({}, r => go(`#/${{ deal: 'deals', contact: 'contacts', company: 'companies', task: 'tasks' }[a.dataset.k]}${a.dataset.k === 'task' ? '' : '/' + r.id}`)); });
   });
 }
@@ -247,9 +292,15 @@ function setupSearch() {
 }
 
 // ---------------- auth screens
-function authPage(inner) { $('#root').innerHTML = `<div class="auth"><div class="brand">PipelineHQ</div><div class="card">${inner}</div></div>`; }
+function authPage(inner) {
+  $('#root').innerHTML = `<div class="authwrap"><aside class="authart"><div class="brand"><img src="icon.svg" width="28" height="28" alt=""> PipelineHQ</div>
+    <div class="pitch"><h1>The CRM your sales team will actually use.</h1><p>Pipeline, email, meetings, quotes and forecasting — in one fast, focused workspace.</p>
+      <ul>${[['pipeline', 'Drag-and-drop pipelines with weighted forecasts'], ['mail', 'Email sequences that stop when prospects reply'], ['zap', 'Automations that do the busywork'], ['sparkles', 'AI summaries and email drafts']].map(([i, t]) => `<li>${icon(i, 18)}<span>${t}</span></li>`).join('')}</ul></div>
+    <div class="mock" aria-hidden="true">${[['Qualified', '$38.5K', 'a'], ['Proposal', '$133K', 'b'], ['Won', '$81.5K', 'c']].map(([n, v, k]) => `<div class="mcol"><small>${n}</small><b>${v}</b><i class="${k}"></i><i class="${k} s"></i></div>`).join('')}</div></aside>
+    <section class="authmain"><div class="auth"><div class="brand sm-only"><img src="icon.svg" width="26" height="26" alt=""> PipelineHQ</div>${inner}</div></section></div>`;
+}
 function authForm(fields, submitLabel, onSubmit) {
-  return { html: `<form id="af">${fields.map(f => fieldHtml(f)).join('')}<div class="err" id="ae"></div><button class="btn" style="width:100%;justify-content:center;margin-top:8px">${submitLabel}</button></form>`,
+  return { html: `<form id="af">${fields.map(f => fieldHtml(f)).join('')}<div class="err" id="ae"></div><button class="btn lg block">${submitLabel}</button></form>`,
     bind: () => { const f = $('#af'); f.onsubmit = async e => { e.preventDefault(); const b = $('button', f); b.disabled = true; try { await onSubmit(readForm(f, fields)); } catch (x) { $('#ae').textContent = x.message; } finally { b.disabled = false; } }; } };
 }
 const enterApp = async () => { ME = await api('GET', 'me'); $('#root').innerHTML = ''; go('#/'); };
@@ -263,14 +314,14 @@ route(/^\/login$/, async (m, _, q) => {
     }
     await enterApp();
   });
-  authPage(`<h2>Sign in</h2>${q.get('error') ? `<p class="err">Sign-in failed: ${esc(q.get('error'))}</p>` : ''}${cfg.google ? '<a class="btn ghost" style="width:100%;justify-content:center;margin-top:12px" href="/auth/google/start">Continue with Google</a><div class="or">or</div>' : ''}${f.html}
+  authPage(`<h2>Welcome back</h2><p class="muted">Sign in to your workspace</p>${q.get('error') ? `<p class="err">Sign-in failed: ${esc(q.get('error'))}</p>` : ''}${cfg.google ? '<a class="btn ghost lg block" href="/auth/google/start">Continue with Google</a><div class="or">or</div>' : ''}${f.html}
     <p class="small"><a href="#/forgot">Forgot password?</a> · <a href="#/signup">Create a workspace</a></p>`); f.bind();
 }, { public: true });
 route(/^\/signup$/, async () => {
   const cfg = await fetch('/api/config').then(r => r.json()).catch(() => ({}));
   const f = authForm([{ k: 'org', l: 'Company name', req: 1 }, { k: 'name', l: 'Your name', req: 1, attrs: 'autocomplete="name"' }, { k: 'email', l: 'Work email', t: 'email', req: 1, attrs: 'autocomplete="email"' },
     { k: 'password', l: 'Password', t: 'password', req: 1, help: 'At least 8 characters', attrs: 'minlength="8" autocomplete="new-password"' }], 'Start free trial', async v => { await api('POST', 'signup', v); await enterApp(); });
-  authPage(`<h2>Create your workspace</h2><p class="muted small">14-day Pro trial. No credit card required.</p>${cfg.google ? '<a class="btn ghost" style="width:100%;justify-content:center;margin-top:12px" href="/auth/google/start">Sign up with Google</a><div class="or">or</div>' : ''}${f.html}<p class="small">Already have an account? <a href="#/login">Sign in</a></p>`); f.bind();
+  authPage(`<h2>Create your workspace</h2><p class="muted small">14-day Pro trial. No credit card required.</p>${cfg.google ? '<a class="btn ghost lg block" href="/auth/google/start">Sign up with Google</a><div class="or">or</div>' : ''}${f.html}<p class="small">Already have an account? <a href="#/login">Sign in</a></p>`); f.bind();
 }, { public: true });
 route(/^\/forgot$/, () => {
   const f = authForm([{ k: 'email', l: 'Email', t: 'email', req: 1 }], 'Send reset link', async v => {

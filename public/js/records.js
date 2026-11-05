@@ -182,16 +182,16 @@ route(/^\/companies$/, (m, _, q) => listPage(m, 'companies', q));
 route(/^\/deals$/, (m, _, q) => listPage(m, 'deals', q));
 
 // ---------------- detail pages
-const TL_ICON = { task: '✅', call: '📞', meeting: '📅', email: '✉️', note: '📝', stage: '➡️', change: '✏️' };
+const TL_ICON = { task: icon('tasks', 15), call: icon('phone', 15), meeting: icon('calendar', 15), email: icon('mail', 15), note: icon('note', 15), stage: icon('arrow', 15), change: icon('layers', 15) };
 function timelineHtml(items) {
   if (!items.length) return '<div class="empty">No activity yet. Log a note, call or email above.</div>';
   return `<ul class="tl">${items.map(t => {
-    if (t.kind === 'email') return `<li><div class="ic">${t.direction === 'in' ? '📥' : '📤'}</div><div class="body"><div class="row"><b class="grow">${esc(t.subject)}</b><span class="small muted">${fmt.rel(t.at)}</span></div>
+    if (t.kind === 'email') return `<li><div class="ic ${t.direction === 'in' ? 'in' : 'out'}">${icon(t.direction === 'in' ? 'inbox' : 'send', 15)}</div><div class="body"><div class="row"><b class="grow">${esc(t.subject)}</b><span class="small muted">${fmt.rel(t.at)}</span></div>
       <div class="small muted">${t.direction === 'in' ? 'Received from ' + esc(t.from_addr) : 'Sent to ' + esc(t.to_addr)} · <span class="tag ${t.status === 'failed' ? 'bad' : t.status === 'queued' ? 'warn' : 'gray'}">${esc(t.status)}</span>${t.open_count ? ` · 👁 opened ${t.open_count}×` : ''}</div>
       <details><summary class="small muted">Show message</summary><div class="txt">${esc(t.body)}</div></details></div></li>`;
-    if (t.kind === 'stage') return `<li><div class="ic">➡️</div><div class="body"><div class="row"><span class="grow">${esc(t.user_name || 'System')} moved stage ${t.from_name ? `${esc(t.from_name)} → ` : 'to '}<b>${esc(t.to_name)}</b></span><span class="small muted">${fmt.rel(t.at)}</span></div></div></li>`;
-    if (t.kind === 'change') return `<li><div class="ic">✏️</div><div class="body"><div class="row"><span class="grow small">${esc(t.user_name || 'System')} ${t.action === 'create' ? 'created this record' : 'updated ' + Object.keys(t.detail || {}).filter(k => !['enriched'].includes(k)).map(k => `<b>${esc(k.replace(/_id$/, '').replace(/_/g, ' '))}</b>`).join(', ')}</span><span class="small muted">${fmt.rel(t.at)}</span></div></div></li>`;
-    return `<li><div class="ic">${TL_ICON[t.type] || '•'}</div><div class="body"><div class="row"><b class="grow" style="${t.done && t.type === 'task' ? 'text-decoration:line-through;opacity:.7' : ''}">${esc(t.subject || t.type[0].toUpperCase() + t.type.slice(1))}</b>
+    if (t.kind === 'stage') return `<li><div class="ic stage">${TL_ICON.stage}</div><div class="body"><div class="row"><span class="grow">${esc(t.user_name || 'System')} moved stage ${t.from_name ? `${esc(t.from_name)} → ` : 'to '}<b>${esc(t.to_name)}</b></span><span class="small muted">${fmt.rel(t.at)}</span></div></div></li>`;
+    if (t.kind === 'change') return `<li><div class="ic">${TL_ICON.change}</div><div class="body"><div class="row"><span class="grow small">${esc(t.user_name || 'System')} ${t.action === 'create' ? 'created this record' : 'updated ' + Object.keys(t.detail || {}).filter(k => !['enriched'].includes(k)).map(k => `<b>${esc(k.replace(/_id$/, '').replace(/_/g, ' '))}</b>`).join(', ')}</span><span class="small muted">${fmt.rel(t.at)}</span></div></div></li>`;
+    return `<li><div class="ic t-${t.type}">${TL_ICON[t.type] || '•'}</div><div class="body"><div class="row"><b class="grow" style="${t.done && t.type === 'task' ? 'text-decoration:line-through;opacity:.7' : ''}">${esc(t.subject || t.type[0].toUpperCase() + t.type.slice(1))}</b>
       <span class="small muted">${t.start_at ? fmt.dt(t.start_at) : t.due_date ? 'due ' + fmt.date(t.due_date) : fmt.rel(t.created_at)}</span><button class="btn link small" data-act="${t.id}">Edit</button></div>
       <div class="small muted">${esc(t.user_name || '')}${t.outcome ? ' · ' + esc(t.outcome) : ''}${t.duration_min ? ` · ${t.duration_min} min` : ''}</div>${t.note ? `<div class="txt">${esc(t.note)}</div>` : ''}</div></li>`;
   }).join('')}</ul>`;
@@ -229,7 +229,7 @@ function composer(ctx, reload) { // ctx: {contact_id, deal_id, company_id, conta
         <textarea id="${id}n" rows="${isCall ? 4 : 3}" class="${isTask || isMeet ? 'mt' : ''}" placeholder="${isCall ? 'Call notes…' : tab === 'note' ? 'Write a note…' : 'Details (optional)'}"></textarea>
         <div class="row mt">${isTask ? `<input type="date" id="${id}d" value="${fmt.today()}" style="width:auto" aria-label="Due">` : ''}${isMeet || isCall ? `<input type="datetime-local" id="${id}dt" style="width:auto" aria-label="When" value="${fmt.localInput(new Date().toISOString())}">` : ''}
         ${isCall ? `<select id="${id}o" style="width:auto"><option>Connected</option><option>Left voicemail</option><option>No answer</option><option>Meeting booked</option><option>Not interested</option></select>` : ''}
-        ${isCall && ctx.contact?.phone ? `<a class="btn ghost sm" href="tel:${esc(ctx.contact.phone)}">📞 ${esc(ctx.contact.phone)}</a>${ME.features.twilio ? `<button class="btn ghost sm" id="${id}dial">Call via browser bridge</button>` : ''}` : ''}
+        ${isCall && ctx.contact?.phone ? `<a class="btn ghost sm" href="tel:${esc(ctx.contact.phone)}">${icon('phone', 14)} ${esc(ctx.contact.phone)}</a>${ME.features.twilio ? `<button class="btn ghost sm" id="${id}dial">Call via browser bridge</button>` : ''}` : ''}
         ${isCall && can.pro('ai') && ME.features.ai ? `<button class="btn ghost sm" id="${id}sum">✨ Clean up notes</button>` : ''}
         <span class="grow"></span><button class="btn" id="${id}save">${isTask ? 'Add task' : isMeet ? 'Schedule' : isCall ? 'Log call' : 'Save note'}</button></div>`;
       $(`#${id}dial`)?.addEventListener('click', async () => { try { await api('POST', 'calls/dial', { contact_id: ctx.contact.id, deal_id: ctx.deal_id }); toast('Calling your phone — answer to connect'); } catch (x) { fail(x); } });
@@ -245,7 +245,7 @@ function composer(ctx, reload) { // ctx: {contact_id, deal_id, company_id, conta
     $$('.tabs a', el).forEach(a => a.onclick = e => { e.preventDefault(); show(a.dataset.t); });
     show('note');
   });
-  return `<div class="card composer" id="${id}"><div class="tabs">${[['note', '📝 Note'], ['email', '✉️ Email'], ['call', '📞 Call'], ['task', '✅ Task'], ['meeting', '📅 Meeting']].map(([t, l]) => `<a href="#" data-t="${t}">${l}</a>`).join('')}</div><div class="cb"></div></div>`;
+  return `<div class="card composer" id="${id}"><div class="tabs">${[['note', 'note', 'Note'], ['email', 'mail', 'Email'], ['call', 'phone', 'Call'], ['task', 'tasks', 'Task'], ['meeting', 'calendar', 'Meeting']].map(([t, i, l]) => `<a href="#" data-t="${t}">${icon(i, 15)} ${l}</a>`).join('')}</div><div class="cb"></div></div>`;
 }
 function aiPanel(entity, id) {
   if (!ME.features.ai || !can.pro('ai')) return '';
@@ -269,7 +269,7 @@ function filesCard(entity, id, files, reload) {
     $$('[data-delfile]').forEach(b => b.onclick = async () => { if (await confirmBox('Delete this file?', { ok: 'Delete' })) { await api('DELETE', 'files/' + b.dataset.delfile); reload(); } });
   });
   return `<div class="card"><div class="row"><h3 class="grow">Files</h3><label class="btn ghost sm">Upload<input type="file" id="${fid}" multiple hidden></label></div>
-    ${files.length ? files.map(f => `<div class="row" style="padding:6px 0;border-bottom:1px solid var(--bd2)"><a class="grow" href="/api/files/${f.id}" download>📎 ${esc(f.name)}</a><span class="small muted">${(f.size / 1024).toFixed(0)} KB</span><button class="btn link small" data-delfile="${f.id}" aria-label="Delete">✕</button></div>`).join('') : '<p class="muted small">No files yet.</p>'}</div>`;
+    ${files.length ? files.map(f => `<div class="row" style="padding:6px 0;border-bottom:1px solid var(--bd2)"><a class="grow" href="/api/files/${f.id}" download>${icon('quote', 15)} ${esc(f.name)}</a><span class="small muted">${(f.size / 1024).toFixed(0)} KB</span><button class="btn link small" data-delfile="${f.id}" aria-label="Delete">✕</button></div>`).join('') : '<p class="muted small">No files yet.</p>'}</div>`;
 }
 function fieldsKv(entity, r, rows) {
   const defs = ME.fields[entity] || [];
@@ -281,7 +281,7 @@ route(/^\/contacts\/(\d+)$/, async (main, m) => {
   const load = async () => {
     const c = await api('GET', 'contacts/' + m[1]);
     main.innerHTML = `<div class="ph"><div class="grow"><a href="#/contacts" class="small">← Contacts</a><h2>${esc(c.name)} ${lifecycleTag(c.lifecycle)}</h2><div class="muted">${esc([c.title, c.company_name].filter(Boolean).join(' at '))}</div></div>
-      ${c.email ? `<a class="btn ghost" href="mailto:${esc(c.email)}">✉️</a>` : ''}${c.phone ? `<a class="btn ghost" href="tel:${esc(c.phone)}">📞</a>` : ''}
+      ${c.email ? `<a class="btn ghost icon-only" href="mailto:${esc(c.email)}" aria-label="Email">${icon('mail', 16)}</a>` : ''}${c.phone ? `<a class="btn ghost icon-only" href="tel:${esc(c.phone)}" aria-label="Call">${icon('phone', 16)}</a>` : ''}
       ${can.pro('sequences') ? '<button class="btn ghost" id="enr">Add to sequence</button>' : ''}<button class="btn ghost" id="nd">＋ Deal</button><button class="btn" id="ed">Edit</button></div>
       <div class="detail"><div class="stack">
         <div class="card">${fieldsKv('contacts', c, [['Email', c.email ? `<a href="mailto:${esc(c.email)}">${esc(c.email)}</a>${c.unsubscribed ? ' <span class="tag gray">unsubscribed</span>' : ''}` : ''], ['Phone', esc(c.phone)], ['Company', c.company_id ? `<a href="#/companies/${c.company_id}">${esc(c.company_name)}</a>` : ''],
@@ -306,7 +306,7 @@ route(/^\/companies\/(\d+)$/, async (main, m) => {
   const load = async () => {
     const c = await api('GET', 'companies/' + m[1]);
     main.innerHTML = `<div class="ph"><div class="grow"><a href="#/companies" class="small">← Companies</a><h2>${esc(c.name)}</h2><div class="muted">${esc([c.industry, c.size && c.size + ' employees'].filter(Boolean).join(' · '))}</div></div>
-      <button class="btn ghost" id="enrich">🔎 Enrich</button><button class="btn ghost" id="nc">＋ Contact</button><button class="btn ghost" id="nd">＋ Deal</button><button class="btn" id="ed">Edit</button></div>
+      <button class="btn ghost" id="enrich">${icon('sparkles', 16)} Enrich</button><button class="btn ghost" id="nc">＋ Contact</button><button class="btn ghost" id="nd">＋ Deal</button><button class="btn" id="ed">Edit</button></div>
       <div class="detail"><div class="stack"><div class="card">${fieldsKv('companies', c, [['Website', c.website ? `<a href="${esc(/^https?:/.test(c.website) ? c.website : 'https://' + c.website)}" target="_blank" rel="noopener noreferrer">${esc(c.domain || c.website)}</a>` : ''], ['Phone', esc(c.phone)], ['Owner', esc(c.owner_name)], ['About', esc(c.description)], ['Open pipeline', fmt.money(c.open_value)]])}</div>
         <div class="card"><h3>People (${c.contacts.length})</h3>${c.contacts.map(p => `<div class="row" style="padding:5px 0"><a class="grow" href="#/contacts/${p.id}">${esc(p.name)}</a><span class="small muted">${esc(p.title || '')}</span></div>`).join('') || '<p class="muted small">No contacts yet.</p>'}</div>
         <div class="card"><h3>Deals (${c.deals.length})</h3>${c.deals.map(d => `<div class="row" style="padding:5px 0"><a class="grow" href="#/deals/${d.id}">${esc(d.title)}</a>${stageTag(d.stage_name, d.stage_kind)}<span class="num">${fmt.money(d.value)}</span></div>`).join('') || '<p class="muted small">No deals yet.</p>'}</div>
@@ -352,9 +352,9 @@ route(/^\/pipeline$/, async (main, _, query) => {
     <a class="btn ghost" href="#/deals?pipeline_id=${p.id}">List view</a><button class="btn" id="nd">＋ Deal</button></div>
     <div class="board">${p.stages.map(s => {
       const ds = rows.filter(d => d.stage_id === s.id), tot = ds.reduce((a, d) => a + d.value, 0);
-      return `<div class="col" data-s="${s.id}"><div class="ch"><b>${esc(s.name)}</b><span class="muted">${ds.length}</span></div><div class="ch muted"><span class="num">${fmt.money(tot)}</span>${s.kind === 'open' ? `<span data-tip="Weighted at ${s.probability}%">≈ ${fmt.compact(tot * s.probability / 100)}</span>` : ''}</div>
+      return `<div class="col" data-s="${s.id}" data-kind="${s.kind}"><div class="ch"><b>${esc(s.name)}</b><span class="muted">${ds.length}</span></div><div class="ch muted"><span class="num">${fmt.money(tot)}</span>${s.kind === 'open' ? `<span data-tip="Weighted at ${s.probability}%">≈ ${fmt.compact(tot * s.probability / 100)}</span>` : ''}</div>
         ${ds.map(d => `<div class="dcard" draggable="true" data-id="${d.id}" tabindex="0"><div class="t">${esc(d.title)}</div><div class="m"><span>${esc(d.company_name || d.contact_name || '')}</span><b class="num" style="color:var(--tx)">${fmt.money(d.value)}</b></div>
-          <div class="m"><span class="${s.kind === 'open' && d.close_date && d.close_date < today ? 'err' : ''}">${d.close_date ? '📅 ' + fmt.date(d.close_date) : ''}</span>${avatar(d.owner_id)}</div></div>`).join('')}</div>`;
+          <div class="m"><span class="${s.kind === 'open' && d.close_date && d.close_date < today ? 'err' : ''}">${d.close_date ? icon('calendar', 13) + ' ' + fmt.date(d.close_date) : ''}</span>${avatar(d.owner_id)}</div></div>`).join('')}</div>`;
     }).join('')}</div><p class="small muted">Drag cards between stages. Moving to a Lost stage asks for a reason.</p>`;
   const nav = o => go(`#/pipeline?${qs({ p: p.id, owner, q: qtext, ...o })}`);
   $('#pp')?.addEventListener('change', e => nav({ p: e.target.value }));
