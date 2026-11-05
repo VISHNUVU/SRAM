@@ -1,0 +1,15 @@
+{
+  "name": "pipelinehq",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Multi-tenant SaaS sales CRM",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node --no-warnings server.js",
+    "test": "node --no-warnings test.js",
+    "seed": "node scripts/seed.js",
+    "backup": "node --no-warnings scripts/backup.js"
+  },
+  "engines": { "node": ">=22.13" },
+  "dependencies": { "@anthropic-ai/sdk": "^1.5.0" }
+}
